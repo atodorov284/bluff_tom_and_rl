@@ -106,9 +106,7 @@ class BluffEnv(AECEnv):
         self.infos[self.agent_selection]["action_mask"] = np.array(
             [0, 1, 1, 1, 1], dtype=np.int8
         )
-        
-        
-    
+
     def get_initial_observation(self) -> dict:
         return (self.observe(self.agent_selection), self.infos[self.agent_selection])
 
@@ -148,13 +146,7 @@ class BluffEnv(AECEnv):
         if not self.terminations[agent]:
             self.agent_selection = self._agent_selector.next()
 
-        self._last_step = (
-            self.observe(self.agent_selection),
-            self.rewards[self.agent_selection],
-            self.terminations[self.agent_selection],
-            self.truncations[self.agent_selection],
-            self.infos[self.agent_selection],
-        )
+        self._last_step = self.last()
 
     def last(self):
         return (
@@ -198,9 +190,10 @@ class BluffEnv(AECEnv):
             self._cards_played_from_rank = 0
             self.current_rank = (self.current_rank + 1) % len(RANKS)
 
-        # For each card in cards to play, remove it from the hand and cards to play
         for card in cards_to_play:
             self.player_hands[agent].remove(card)
+
+        self.rewards[agent] = len(cards_to_play)
 
         # Check for victory
         self._check_victory(agent)
@@ -211,11 +204,11 @@ class BluffEnv(AECEnv):
         """
         if not self.player_hands[agent]:
             self.terminations[agent] = True
-            self.rewards[agent] = 1
+            self.rewards[agent] = 1000
             for other_agent in self.agents:
                 if other_agent != agent:
                     self.terminations[other_agent] = True
-                    self.rewards[other_agent] = -1
+                    self.rewards[other_agent] = -1000
 
     def _handle_challenge(self, agent: str) -> None:
         """Handle the challenge action."""
@@ -230,9 +223,11 @@ class BluffEnv(AECEnv):
         if is_truthful:
             # Challenger takes all cards in the central pile
             self.player_hands[agent].extend(self.central_pile)
+            self.rewards[agent] = len(self.central_pile) * 1000
         else:
             # Last player takes all cards in the central pile
             self.player_hands[self.last_played_agent].extend(self.central_pile)
+            self.rewards[self.last_played_agent] = len(self.central_pile) * 1000
 
         # Reset the central pile and move to the next rank
         self.central_pile = []
@@ -245,6 +240,7 @@ class BluffEnv(AECEnv):
             f"Current observation for {self.agent_selection}: {self.observe(self.agent_selection)}"
         )
         print("Last cards played: ", self.current_claim)
+        print(f"Reward: {self.rewards[self.agent_selection]}")
         print(f"Central pile: {len(self.central_pile)} cards")
         print(f"Current rank: {RANKS[self.current_rank]}")
         for agent in self.agents:
