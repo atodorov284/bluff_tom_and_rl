@@ -1,0 +1,17 @@
+[project]
+name = "bluff-game"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "atodorov284", email = "atodorov284@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+bluff-game = "bluff_game:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
