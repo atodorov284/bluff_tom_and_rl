@@ -67,7 +67,7 @@ class BluffEnv(AECEnv):
     def action_space(self, agent: str) -> Discrete:
         return self._action_spaces[agent]
 
-    def reset(self, seed: int = None, options: dict = None) -> None:
+    def reset(self, seed: int = None, options: dict = None) -> Tuple:
         """Reset the environment to start a new game."""
 
         # Deck and hand initialization
@@ -102,8 +102,15 @@ class BluffEnv(AECEnv):
 
         self._agent_selector = agent_selector(self.agents)
         self.agent_selection = self._agent_selector.next()
+
+        self.infos[self.agent_selection]["action_mask"] = np.array(
+            [0, 1, 1, 1, 1], dtype=np.int8
+        )
         
-        self.infos[self.agent_selection]["action_mask"] = np.array([0, 1, 1, 1, 1], dtype=np.int8)
+        
+    
+    def get_initial_observation(self) -> dict:
+        return (self.observe(self.agent_selection), self.infos[self.agent_selection])
 
     def observe(self, agent: str) -> dict:
         """Return the current observation for the specified agent."""
@@ -131,14 +138,16 @@ class BluffEnv(AECEnv):
             print("\n--- Current Game State ---")
             print("Action:", action)
             self.render()
-            
-        self.infos[self.agent_selection]["action_mask"] = self._get_action_mask(self.agent_selection)
-        
+
+        self.infos[self.agent_selection]["action_mask"] = self._get_action_mask(
+            self.agent_selection
+        )
+
         self._cumulative_rewards[agent] += self.rewards[agent]
 
         if not self.terminations[agent]:
             self.agent_selection = self._agent_selector.next()
-            
+
         self._last_step = (
             self.observe(self.agent_selection),
             self.rewards[self.agent_selection],
@@ -146,20 +155,22 @@ class BluffEnv(AECEnv):
             self.truncations[self.agent_selection],
             self.infos[self.agent_selection],
         )
-        
+
     def last(self):
-        return (self.observe(self.agent_selection),
+        return (
+            self.observe(self.agent_selection),
             self.rewards[self.agent_selection],
             self.terminations[self.agent_selection],
             self.truncations[self.agent_selection],
-            self.infos[self.agent_selection],)
-            
+            self.infos[self.agent_selection],
+        )
+
     def _get_action_mask(self, agent: str) -> list:
         """Return a binary mask of valid actions for the given agent."""
         mask = np.zeros(len(ALL_ACTIONS), dtype=np.int8)
 
         mask[ACTION_CHALLENGE] = int(bool(self.last_played_agent))
-        
+
         hand_size = len(self.player_hands[agent])
         mask[ACTION_PLAY_1] = int(hand_size >= 1)
         mask[ACTION_PLAY_2] = int(hand_size >= 2)
@@ -170,7 +181,6 @@ class BluffEnv(AECEnv):
     def _handle_play(self, agent: str, number_of_cards: int) -> None:
         """Handle the play action."""
 
-        # Randomly select cards from the player's hand (game assumes legal play for now). Fix later
         hand = self.player_hands[agent]
         number_of_cards = min(number_of_cards, len(hand))
         cards_to_play = random.sample(hand, number_of_cards)
